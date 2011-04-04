@@ -1,6 +1,21 @@
-
-#Import Modules
-import os, pygame, random
+# RussianSquare - Tetris like block game
+#    Copyright (C) 2011 Joseph Grasser
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+import os, pygame, random, time
 from pygame.locals import *
 
 if not pygame.font: print 'Warning, fonts disabled'
@@ -51,16 +66,10 @@ def colorfy(image, color):
             image.set_at((x,y) , (color[0], color[1], color[2], pixel[3]))
     return image
 
-def hollow_square(color, scale_x=-1, scale_y=-1):
-    image = pygame.image.load( os.path.join('data', 'pieceHalo.tga' ) )
-    for x in range(0, image.get_width()):
-        for y in range(0, image.get_height()):
-            pixel = image.get_at((x,y))
-            image.set_at((x,y) , (color[0], color[1], color[2], pixel[3]))
-    if scale_x == -1:
-        return image
-    else:
-        return pygame.transform.scale(image, (scale_x, scale_y))
+def shrinkImages(images, scale_x=-1, scale_y=-1):
+    for x in range(0, len(images)):
+        images[x] = pygame.transform.scale(images[x], (scale_x, scale_y))
+    return images
     
 #------------------------------------------------------------------------------------------#
 # Global Variables                                                      Joseph Grasser     # 
@@ -72,18 +81,15 @@ screen = pygame.display.set_mode(windowDimension)
 scene = 0
 letterKey = ['a','b','c','d','e','f','g','h', 'i', 'j', 'k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z', '+', ' ', '0','1','2','3','4','5','6','7','8','9','.']
 
-#colors
+#Sprite Images
 black = 0, 0, 0
-red = 255, 0, 0
-green = 0, 255, 0
-blue = 0, 0, 255
-yellow = 255, 255, 0
-purple = 200, 0, 255
-colors = [red, green, blue, yellow, purple]
-
-hollow_squares = []
-for color in colors:
-    hollow_squares.append( hollow_square( color, 35, 35 ) )
+image1 =  pygame.image.load( os.path.join('data', 'blue_indent.png' ) )
+image2 = pygame.image.load( os.path.join('data', 'blue_shiny.png' ) )
+image3 =  pygame.image.load( os.path.join('data', 'green_dot.png' ) )
+image4 =  pygame.image.load( os.path.join('data', 'yellow_cross.png' ) )
+image5 =  pygame.image.load( os.path.join('data', 'red_circle.png' ) )
+images = [image1, image2, image3, image4, image5]
+images = shrinkImages(images, 40, 40)
 
 big_alphabet = big_Alpha()
 small_alphabet = small_Alpha()
@@ -97,19 +103,7 @@ def init():
     pygame.init()
     pygame.display.set_caption('Russian Squares v1.0')
     pygame.mouse.set_visible(1)
-
-def darkenScreen(screen):
-    color = (0, 0, 0, 0)
-    darkScreen = pygame.Surface(windowDimension, SRCALPHA)
-    alpha = 0
-    while alpha < 255 :
-        darkScreen.fill(color)
-        screen.blit(darkScreen, (0,0))
-        alpha = alpha + 1
-        color = color[0],color[1],color[2],alpha
-        for x in range(0, 10):
-            print "Waiting"
-
+ 
 def addText(screen, alpha, text, location):
     x = location[0]
     y = location[1]
@@ -150,20 +144,21 @@ def drawBorder(Surface):
 #------------------------------------------------------------------------------------------#
 # Section contains the following gui components: Menus, Enterboxes, and Scoreboards        # 
 # -----------------------------------------------------------------------------------------# 
-class GUI_Menu(pygame.Surface):
-    def load_selection_square(self):
-        image =  pygame.image.load(os.path.join('data', 'Hammer_and_sickle.png'))
-        image = pygame.transform.scale(image, (40, 40))
-        return image
-		
-    def __init__(self, commands, width, alphabet):
-        pygame.Surface.__init__(self, (width+40, 20+len(commands)*alphabet[0].get_height())) 
+class GUI_Menu(pygame.Surface):		
+    def __init__(self, commands, width, alphabet, border = 1):
+        pygame.Surface.__init__(self, (width+40, 20+len(commands)*alphabet[0].get_height()), SRCALPHA) 
         self.commands = commands
         self.alphabet = alphabet
+        self.border = border
         self.printOptions()
         self.selectionSquare = self.load_selection_square()
         self.angle = 0
         self.index = 0
+
+    def load_selection_square(self):
+        image =  pygame.image.load(os.path.join('data', 'Hammer_and_sickle.png'))
+        image = pygame.transform.scale(image, (self.alphabet[0].get_height(), self.alphabet[0].get_height()))
+        return image
 		
     def up(self):
         if self.index > 0:
@@ -179,37 +174,50 @@ class GUI_Menu(pygame.Surface):
             addText(self, self.alphabet, self.commands[x], (40, y + self.alphabet[0].get_height()*x) )
 
     def update(self):
-        self.fill((0,0,0))
+        self.fill(black)
         self.printOptions()
-        drawBorder(self)
+        if self.border == 1 :
+            drawBorder(self)
         self.blit(self.selectionSquare, (10, 10+self.index*self.alphabet[0].get_height()))
 
 class GUI_EnterBox(pygame.Surface):
     def __init__(self, alpha):
-        pygame.Surface.__init__(self, (500, 60))
-        self.box = hollow_square( (0,0,255), 500, 60)
+        pygame.Surface.__init__(self, (250, 60), SRCALPHA)
         self.alphabet = alpha
+        self.rect = pygame.Rect((5, 5), (240, 50))
         
     def update(self, data):
-        self.fill((0,0,0))
-        self.blit(self.box, (0,0))
-        addText(self, self.alphabet, data, (100,10))
+        self.fill(black)
+        pygame.draw.rect(self, (0,0,255), self.rect, 3)
+        addText(self, self.alphabet, data, (0,10))
 
 class GUI_Scoreboard(pygame.Surface):
-    def __init__(self, alphabet):
-        pygame.Surface.__init__(self, (225, 420))
-        self.alphabet = alphabet
+    def __init__(self, timeLimit):
+        pygame.Surface.__init__(self, (windowDimension[0], 55), SRCALPHA)
         self.xoffset = 10
         self.yoffset = 10
         self.score = 0
-        self.time = 0
-        self.color = "Blue"        
+        self.started = 0
+        self.time = timeLimit
+        self.image = ""        
+
+    def setStart(self, start ):
+        self.started = start        
+
+    def setSpecialColor(self, image):
+        self.image = image 
 
     def update(self, time, score):
-        self.fill((0,0,0))
-        addText(self, self.alphabet, str(time), (self.xoffset, self.yoffset) ) 
-        addText(self, self.alphabet, "00000000" +  str(score), (self.xoffset, 25) )
-        addText(self, self.alphabet, "Red x3", (self.xoffset+3, self.yoffset+self.alphabet[0].get_height()*7) )
+        self.fill(black)
+        drawBorder(self)
+        self.score = self.score + score
+        self.time = self.time - int(time - self.started) + int(score*25)
+        if self.time < 0 :
+            return "TIMESUP"
+        addText(self, small_alphabet, str(self.time), (windowDimension[0]/2-25, self.get_height()/2))
+        addText(self, small_alphabet, str(self.score) , (25, self.get_height()/2) )
+        addText(self, small_alphabet, "Red x3",  (windowDimension[0]-100, self.get_height()/2))
+        return "OK"
 
 #------------------------------------------------------------------------------------------#
 # Scene Section                                                      Joseph Grasser        # 
@@ -217,10 +225,11 @@ class GUI_Scoreboard(pygame.Surface):
 # Contains all the scenes in the game.                                                     # 
 # -----------------------------------------------------------------------------------------# 
 class Scene_Title(pygame.Surface):
-    def __init__(self):	
-        pygame.Surface.__init__(self, windowDimension)
-        self.menu = GUI_Menu(["New Game", "High Scores", "Instructions", "Quit Game"], 225, big_alphabet)
-        self.menu.update()	
+    def __init__(self, MenuIndex):	
+        pygame.Surface.__init__(self, windowDimension, SRCALPHA)
+        self.menu = GUI_Menu(["New Game", "High Scores", "Instructions", "Quit Game"], 225, small_alphabet, 0)
+        self.menu.index = MenuIndex
+        self.menu.update()
     
     def start(self):
         #<>Title loop start
@@ -235,13 +244,13 @@ class Scene_Title(pygame.Surface):
                     self.menu.down()
                 elif event.type == KEYDOWN and event.key == K_UP:
                     self.menu.up()
-                elif event.type == KEYDOWN and event.key == K_SPACE:
+                elif event.type == KEYDOWN and event.key == 13:
                     if( self.menu.index == 0 ):
                         #New game selected
                         return Scene_Difficulty()
                     elif( self.menu.index == 1 ):
                         #High scores selected
-                        print "High Score wanted"
+                        return  Scene_HighScores()
                     elif( self.menu.index == 2 ):
                         #Instructions selected
                         return Scene_Instructions()
@@ -260,7 +269,7 @@ class Scene_Title(pygame.Surface):
 
 class Scene_Difficulty(pygame.Surface):
     def __init__(self):	
-        pygame.Surface.__init__(self, windowDimension)
+        pygame.Surface.__init__(self, windowDimension, SRCALPHA)
         self.menu = GUI_Menu(["Easy", "Moderate", "Difficult"], 225, big_alphabet)	
  
     def start(self):      
@@ -270,16 +279,16 @@ class Scene_Difficulty(pygame.Surface):
                 if event.type == QUIT:
                     return 0
                 elif event.type == KEYDOWN and event.key == K_ESCAPE:
-                    return Scene_Title()
+                    return Scene_Title(0)
                 elif event.type == KEYDOWN and event.key == K_DOWN:
                     self.menu.down()
                 elif event.type == KEYDOWN and event.key == K_UP:
                     self.menu.up()
-                elif event.type == KEYDOWN and event.key == K_SPACE:
+                elif event.type == KEYDOWN and event.key == 13:
                     if (self.menu.index == 0):
                         return Scene_Board("EASY")
                     elif(self.menu.index == 1):
-                        return Scene_Board("MEDIUM")
+                        return Scene_Board("MODERATE")
                     elif(self.menu.index == 2):
                         return Scene_Board("HARD")
 
@@ -287,15 +296,15 @@ class Scene_Difficulty(pygame.Surface):
         self.fill(black)
         self.menu.update()
         drawBorder(self)
-        addText(self, big_alphabet, "Choose Difficulty", (160, 75) )
-        self.blit( self.menu, (175, 150) )
+        addText(self, big_alphabet, "Choose Difficulty", (160, windowDimension[1]/2-100) )
+        self.blit( self.menu, (175, windowDimension[1]/2-60) )
         screen.blit(self, (0,0))
         pygame.display.flip()
 
 class Scene_Instructions(pygame.Surface):
     def __init__(self):	
-        pygame.Surface.__init__(self, windowDimension)
-	
+        pygame.Surface.__init__(self, windowDimension, SRCALPHA)
+
     def start(self):
         #<>Title loop start
         while 1:    
@@ -304,7 +313,7 @@ class Scene_Instructions(pygame.Surface):
                 if event.type == QUIT:
                     return 0
                 elif event.type == KEYDOWN and event.key == K_ESCAPE:
-                    return Scene_Title()
+                    return Scene_Title(2)
         #<>Game Loop End
 
     def update(self):
@@ -330,32 +339,55 @@ class Scene_Instructions(pygame.Surface):
         screen.blit(self, (0,0))	
         pygame.display.flip()	
 
-def enterNameScene(screen, big_a, small_a):
-    drawBorder(screen)
-    addText(screen, big_a, "highscore", (340, 50) )	
+class Scene_End(pygame.Surface):
+    def __init__(self, outcome):	
+        pygame.Surface.__init__(self, windowDimension, SRCALPHA)
+        self.outcome = outcome
     
-    box = GUI_EnterBox( big_a )
-    boxStart = (170, 150)
-    screen.blit(box, boxStart)
-    
-    #<>Title loop start
-    data = "name"
-    box.update(data)
-    while 1:    
-        for event in pygame.event.get():
-            if event.type == QUIT:
-                return -1
-            elif event.type == KEYDOWN and event.key == K_ESCAPE:
-                return -1
-            elif event.type == KEYDOWN and event.key == K_BACKSPACE:
-                if( len(data) > 0 ):
-                    data = data.__getslice__(0, len(data)-1)
-            elif (event.type == KEYDOWN and (event.key == K_SPACE or (event.key >= K_a and event.key <= K_z) or (event.key >= K_0 and event.key <= K_9)) and len(data) < 18 ):
-                data = data + chr(event.key)
-        box.update(data)
-        screen.blit(box, boxStart)
+    def start(self):
+        #<>Title loop start
+        while 1:    
+            self.update()
+
+    def update(self):
+        self.fill( black )
+        addText(self, big_alphabet, str(self.outcome), (160, windowDimension[1]/2-100) )
+        screen.blit(self, (0,0))
         pygame.display.flip()
-    #<>Game Loop End	
+
+class Scene_HighScores(pygame.Surface):
+    def __init__(self):
+        pygame.Surface.__init__(self, windowDimension, SRCALPHA)
+        self.box = GUI_EnterBox( big_alphabet )
+
+    def start(self):      
+        data = "name"
+        #<>Title loop start
+        while 1:  
+            self.box.update(data)  
+            for event in pygame.event.get():
+                if event.type == QUIT:
+                    return 0
+                elif event.type == KEYDOWN and event.key == K_ESCAPE:
+                    return Scene_Title(1)
+                elif event.type == KEYDOWN and event.key == K_BACKSPACE:
+                    if( len(data) > 0 ):
+                        data = data.__getslice__(0, len(data)-1)
+                elif (event.type == KEYDOWN and (event.key == K_SPACE or (event.key >= K_a and event.key <= K_z) or (event.key >= K_0 and event.key <= K_9)) and len(data) < 14 ):
+                    data = data + chr(event.key)
+                elif event.type == KEYDOWN and event.key == 13:
+                    print data
+            self.update()
+        #<>Game Loop End	
+
+    def update(self):
+        self.fill(black)
+        addText(self, big_alphabet, "highscores", (225, 50) )	
+        addText(self, small_alphabet, "Press Escape to go back to Title Screen", (260, 450) )
+        self.blit(self.box, (windowDimension[0]/4, windowDimension[1]/2))
+        drawBorder(self)
+        screen.blit(self, (0,0))
+        pygame.display.flip()	
 
 class Square(pygame.sprite.Sprite):
     def __init__(self, color):
@@ -363,7 +395,7 @@ class Square(pygame.sprite.Sprite):
         self.blinking = 0
         self.spinning = 0
         self.angle = 0
-        self.image = random.choice( hollow_squares )
+        self.image = random.choice( images )
         self.original = self.image
         self.rect = self.image.get_rect()
         
@@ -397,32 +429,43 @@ class Square(pygame.sprite.Sprite):
 
 class Scene_Board(pygame.Surface):
     def __init__(self, difficulty):
-        pygame.Surface.__init__(self, windowDimension)
-        self.board = [  [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0],
-                        [0,0,0,0,0,0,0,0,0,0,0,0]
+        pygame.Surface.__init__(self, windowDimension, SRCALPHA)
+        if difficulty == "EASY":
+            self.scoreboard = GUI_Scoreboard(5000*5)
+        elif difficulty == "MODERATE":
+            self.scoreboard = GUI_Scoreboard(5000*4)
+        else:
+            self.scoreboard = GUI_Scoreboard(5000*3)
+
+        self.board = [  [0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,0,0,0,0,0,0]
                      ]
         self.active = 0,0
-        sprite = Square((0,0,0))
+        self.MAX_ROWS = 13
+        self.MAX_COLOMNS = 15
+        self.score = 0
+
+        sprite = Square(black)
         self.set(self.active, sprite)
         self.sprites = [sprite]
         for x in range( 1, len( self.board )-1 ):
-            for y in range( 1, len( self.board[2] )-1):
-                sprite = Square((0,0,0))
+            for y in range( 1, len( self.board[0] )-1):
+                sprite = Square(black)
                 self.sprites.append(sprite)
                 self.set((x,y),sprite)
         self.seenSprites = pygame.sprite.RenderPlain(self.sprites)
+        
 
     def collapseSquare(self):
         midpoint = windowDimension[0]/2 , windowDimension[1]/2
@@ -431,12 +474,8 @@ class Scene_Board(pygame.Surface):
                 piece = self.board[x][y]
                 if piece == 0:                    
                     continue
-                x_l = x*35 + 35
-                y_l = y*35 + 35
-                if len(self.board)%2 >= 0 :
-                    x_l = x_l + 35/2
-                if len(self.board[1])%2 !=0:
-                    y_l = x_l + 35/2
+                x_l = x*35 + 15 + (35/2)*(self.MAX_COLOMNS-len(self.board))
+                y_l = y*35 + 45 + 35/2 * (self.MAX_ROWS-len(self.board[0]))
                 piece.goTo(x_l,y_l)
 
     def get( self, location ):
@@ -483,6 +522,9 @@ class Scene_Board(pygame.Surface):
         self.set(self.active, piece)
 
     def findCompleteRowsColomns(self):
+        if len(self.board) < 3 and len(self.board[0]) < 3:
+            return []
+
         for x in range(1, len(self.board)-1):
             piece = self.get((x,1))
             col = [piece]
@@ -512,18 +554,21 @@ class Scene_Board(pygame.Surface):
                 return row
             
         return []
-                       
+                  
     def start(self):
+        self.scoreboard.setStart( time.time() )
         #<>Title loop start
         while 1:  
-            #Search and remove completed rows and columns 
-            squares = self.findCompleteRowsColomns()	
-            while( squares != [] ):
-            	for square in squares:
-                	square.spinning = 1 
-                	square.kill()
-                squares = self.findCompleteRowsColomns()  
-            
+            code = self.scoreboard.update(time.time(), self.score)
+            self.score = 0
+            if code == "TIMESUP":
+                return Scene_End(self.scoreboard.score)
+
+            if( len(self.board) <= 2 and len(self.board[0]) <= 2 ):
+                lastPiece = self.get(self.active)
+                self.set(self.active,0)
+                return Scene_HighScores()
+
             #Look for player input
             activeSprite = 0
             newLocation = self.active 
@@ -556,6 +601,19 @@ class Scene_Board(pygame.Surface):
                 self.old = self.active
                 self.active = self.move(activeSprite, self.active, newLocation)
                 self.set(self.old, 0)
+
+                #Search and remove completed rows and columns 
+                squares = self.findCompleteRowsColomns()	
+                while( squares != [] ):
+                    number = len(squares)
+                    self.score = number*(100)
+                    for square in squares:
+                        if square == 0 :
+                            print "Blank"
+                            continue
+                        square.spinning = 1 
+                        square.kill()
+                    squares = self.findCompleteRowsColomns()  
             self.update()
         #<>Game Loop End
             
@@ -569,36 +627,44 @@ class Scene_Board(pygame.Surface):
                 s = s + str(piece)     
             s = s + '\n'
         print s + "$----------------------------------"
-        for y in range(0, len(self.board[0])):        
-            for x in range(0, len(self.board)):
-                piece = self.get((x,y))
-                if piece != 0 :
-                    print str(piece.loc)
             
     def update(self):
         self.fill(black)
-        #drawBorder(self)
+        drawBorder(self)
         self.collapseSquare()
         self.seenSprites.update()
         self.seenSprites.draw(self) 
+        self.blit(self.scoreboard,(0,0))
         screen.blit(self, (0,0))	
         pygame.display.flip()		
-    
+ 
+def fadeIn(scene):
+    scene.set_alpha(0)
+    while( scene.get_alpha() < 255 ):
+        screen.blit(scene, (0,0))
+        scene.set_alpha( scene.get_alpha() + 1 ) 
+
+def fadeOut(scene):
+    scene.set_alpha(255)
+    while( scene.get_alpha() > 0  ):
+        screen.blit(scene, (0,0))
+        scene.set_alpha( scene.get_alpha() - 1 ) 
+
 def main():
     init()
 	
     pygame.mixer.init()
-    pygame.mixer.music.load( os.path.join('data', 'ussr.union77.ogg') )
+    pygame.mixer.music.load( os.path.join('data', 'USK_-_05_-_Little_Sound_Disko05.mp3') )
     pygame.mixer.music.play(-1)
 	
-    scene = Scene_Title()
+    scene = Scene_Title(0)
     #<>Game loop start
-    while scene != 0:
-        #fade into scene   
-        scene = scene.start()   
+    while scene != 0:  
+        #fadeIn(scene)
+        scene = scene.start() 
+        #fadeOut(scene) 
     #<>Game Loop End
     return 0
-
 #Game Over
 
 
