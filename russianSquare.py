@@ -18,8 +18,8 @@
 import os, pygame, random, time
 from pygame.locals import *
 
-if not pygame.font: print 'Warning, fonts disabled'
-if not pygame.mixer: print 'Warning, sound disabled'
+if not pygame.font: print('Warning, fonts disabled')
+if not pygame.mixer: print('Warning, sound disabled')
 
 #------------------------------------------------------------------------------------------#
 # Loading scripts                                                       Joseph Grasser     # 
@@ -128,15 +128,15 @@ def drawBorder(Surface):
     borderBottom = pygame.image.load(os.path.join('data','gridLineBottom.tga'))   
     borderLeft = pygame.image.load(os.path.join('data','gridLineLeft.tga'))   
     borderRight = pygame.image.load(os.path.join('data','gridLineRight.tga'))  
-    for x in range( 0, paneWidth/40):
-        for y in range( 0, paneHeight/40):
+    for x in range( 0, paneWidth // 40):
+        for y in range( 0, paneHeight // 40):
             if x == 0 and y >= 0:
                 Surface.blit(borderLeft, (0, y*40))
             if x >= 0 and y == 0:
                 Surface.blit(borderTop, (x*40,0))
-            if x+1 == paneWidth/40 and y >= 0:
+            if x+1 == paneWidth // 40 and y >= 0:
                 Surface.blit(borderRight, ((x)*40, y*40))
-            if x >= 0 and y+1 == paneHeight/40:
+            if x >= 0 and y+1 == paneHeight // 40:
                 Surface.blit(borderBottom, (x*40, (y)*40))      
 
 #------------------------------------------------------------------------------------------#
@@ -376,7 +376,7 @@ class Scene_HighScores(pygame.Surface):
                 elif (event.type == KEYDOWN and (event.key == K_SPACE or (event.key >= K_a and event.key <= K_z) or (event.key >= K_0 and event.key <= K_9)) and len(data) < 14 ):
                     data = data + chr(event.key)
                 elif event.type == KEYDOWN and event.key == 13:
-                    print data
+                    print(data)
             self.update()
         #<>Game Loop End	
 
@@ -609,7 +609,7 @@ class Scene_Board(pygame.Surface):
                     self.score = number*(100)
                     for square in squares:
                         if square == 0 :
-                            print "Blank"
+                            print("Blank")
                             continue
                         square.spinning = 1 
                         square.kill()
@@ -626,7 +626,7 @@ class Scene_Board(pygame.Surface):
                     piece = "|" + str(x) +"," + str(y) + "|"
                 s = s + str(piece)     
             s = s + '\n'
-        print s + "$----------------------------------"
+        print(s + "$----------------------------------")
             
     def update(self):
         self.fill(black)
